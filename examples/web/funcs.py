@@ -25,6 +25,9 @@ custom_path: Optional[str] = None
 has_interrupted = False
 is_in_generate = False
 
+enable_cache = True
+experimental = False
+
 seed_min = 1
 seed_max = 4294967295
 
@@ -62,12 +65,27 @@ def on_audio_seed_change(audio_seed_input):
     return rand_spk
 
 
+def set_params(en_cache, exp):
+    global enable_cache, experimental
+
+    enable_cache = en_cache
+    experimental = exp
+
+
 def load_chat(cust_path: Optional[str], coef: Optional[str]) -> bool:
+    global enable_cache, experimental
+
     if cust_path == None:
-        ret = chat.load(coef=coef)
+        ret = chat.load(coef=coef, enable_cache=enable_cache, experimental=experimental)
     else:
         logger.info("local model path: %s", cust_path)
-        ret = chat.load("custom", custom_path=cust_path, coef=coef)
+        ret = chat.load(
+            "custom",
+            custom_path=cust_path,
+            coef=coef,
+            enable_cache=enable_cache,
+            experimental=experimental,
+        )
         global custom_path
         custom_path = cust_path
     if ret:
@@ -102,7 +120,7 @@ def reload_chat(coef: Optional[str]) -> str:
     chat.unload()
     gr.Info("Model unloaded.")
     if len(coef) != 230:
-        gr.Warning("Ingore invalid DVAE coefficient.")
+        gr.Warning("Ignore invalid DVAE coefficient.")
         coef = None
     try:
         global custom_path
@@ -111,7 +129,7 @@ def reload_chat(coef: Optional[str]) -> str:
         raise gr.Error(str(e))
     if not ret:
         raise gr.Error("Unable to load model.")
-    gr.Info("Reload succeess.")
+    gr.Info("Reload success.")
     return chat.coef
 
 

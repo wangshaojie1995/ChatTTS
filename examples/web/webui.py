@@ -102,7 +102,7 @@ def main():
                 minimum=seed_min,
                 maximum=seed_max,
             )
-            generate_audio_seed = gr.Button("\U0001F3B2", interactive=True)
+            generate_audio_seed = gr.Button("\U0001f3b2", interactive=True)
             text_seed_input = gr.Number(
                 value=ex[0][5],
                 label="Text Seed",
@@ -110,20 +110,20 @@ def main():
                 minimum=seed_min,
                 maximum=seed_max,
             )
-            generate_text_seed = gr.Button("\U0001F3B2", interactive=True)
+            generate_text_seed = gr.Button("\U0001f3b2", interactive=True)
 
         with gr.Row():
             spk_emb_text = gr.Textbox(
                 label="Speaker Embedding",
                 max_lines=3,
-                show_copy_button=True,
+                buttons=["copy"],
                 interactive=True,
                 scale=2,
             )
             dvae_coef_text = gr.Textbox(
                 label="DVAE Coefficient",
                 max_lines=3,
-                show_copy_button=True,
+                buttons=["copy"],
                 interactive=True,
                 scale=2,
             )
@@ -161,7 +161,7 @@ def main():
         text_output = gr.Textbox(
             label="Output Text",
             interactive=False,
-            show_copy_button=True,
+            buttons=["copy"],
         )
 
         sample_audio_input.change(
@@ -261,8 +261,14 @@ def main():
     parser.add_argument("--root_path", type=str, help="root path")
     parser.add_argument("--custom_path", type=str, help="custom model path")
     parser.add_argument("--coef", type=str, help="custom dvae coefficient")
+    parser.add_argument(
+        "--disable_cache", action="store_true", help="enable model cache"
+    )
+    parser.add_argument(
+        "--experimental", action="store_true", help="enable model cache"
+    )
     args = parser.parse_args()
-
+    set_params(not args.disable_cache, args.experimental)
     logger.info("loading ChatTTS model...")
 
     if load_chat(args.custom_path, args.coef):
@@ -279,7 +285,7 @@ def main():
         server_port=args.server_port,
         root_path=args.root_path,
         inbrowser=True,
-        show_api=False,
+        footer_links=["api", "gradio", "settings"],
     )
 
 

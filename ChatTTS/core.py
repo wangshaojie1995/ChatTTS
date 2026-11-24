@@ -24,6 +24,7 @@ from .utils import (
     del_all,
 )
 from .utils import logger as utils_logger
+from .utils import FileLike
 
 from .norm import Normalizer
 
@@ -66,7 +67,7 @@ class Chat:
         self,
         source: Literal["huggingface", "local", "custom"] = "local",
         force_redownload=False,
-        custom_path: Optional[torch.serialization.FILE_LIKE] = None,
+        custom_path: Optional[FileLike] = None,
     ) -> Optional[str]:
         if source == "local":
             download_path = custom_path if custom_path is not None else os.getcwd()
@@ -138,12 +139,13 @@ class Chat:
         source: Literal["huggingface", "local", "custom"] = "local",
         force_redownload=False,
         compile: bool = False,
-        custom_path: Optional[torch.serialization.FILE_LIKE] = None,
+        custom_path: Optional[FileLike] = None,
         device: Optional[torch.device] = None,
-        coef: Optional[torch.Tensor] = None,
+        coef: Optional[str] = None,
         use_flash_attn=False,
         use_vllm=False,
         experimental: bool = False,
+        enable_cache=True,
     ) -> bool:
         download_path = self.download_models(source, force_redownload, custom_path)
         if download_path is None:
@@ -155,6 +157,7 @@ class Chat:
             use_flash_attn=use_flash_attn,
             use_vllm=use_vllm,
             experimental=experimental,
+            enable_cache=enable_cache,
             **{
                 k: os.path.join(download_path, v)
                 for k, v in asdict(self.config.path).items()
@@ -258,9 +261,10 @@ class Chat:
             return res_gen
         elif not refine_text_only:
             stripped_wavs = []
+            thr = np.float32(1e-5)
             for wavs in res_gen:
                 for wav in wavs:
-                    stripped_wavs.append(wav[np.abs(wav) > 1e-5])
+                    stripped_wavs.append(wav[np.abs(wav) > thr])
             if split_text:
                 return [np.concatenate(stripped_wavs)]
             return stripped_wavs
@@ -285,6 +289,7 @@ class Chat:
         use_flash_attn=False,
         use_vllm=False,
         experimental: bool = False,
+        enable_cache=True,
     ):
         if device is None:
             device = select_device(experimental=experimental)
@@ -349,6 +354,7 @@ class Chat:
             device=device,
             device_gpt=self.device_gpt,
             logger=self.logger,
+            enable_cache=enable_cache,
         ).eval()
         assert gpt_ckpt_path, "gpt_ckpt_path should not be None"
         gpt.load_pretrained(gpt_ckpt_path, embed_path, experimental=experimental)
@@ -423,6 +429,7 @@ class Chat:
             text_tokens = refined.ids
             text_tokens = [i[i.less(self.tokenizer.break_0_ids)] for i in text_tokens]
             text = self.tokenizer.decode(text_tokens)
+            self.logger.debug("refined texts %s", str(text))
             refined.destroy()
             if refine_text_only:
                 if split_text and isinstance(text, list):

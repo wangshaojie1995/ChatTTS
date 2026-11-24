@@ -10,13 +10,13 @@ from typing import List, Tuple, Optional, Union
 import torch
 from transformers import BertTokenizerFast
 
-from ..utils import del_all
+from ..utils import del_all, FileLike
 
 
 class Tokenizer:
     def __init__(
         self,
-        tokenizer_path: torch.serialization.FILE_LIKE,
+        tokenizer_path: FileLike,
     ):
         """
         tokenizer: BertTokenizerFast = torch.load(
@@ -53,7 +53,12 @@ class Tokenizer:
 
         # avoid random speaker embedding of tokenizer in the other dims
         for t in text:
-            x = self._tokenizer.encode_plus(
+            encode_plus = (
+                self._tokenizer.encode_plus
+                if hasattr(self._tokenizer, "encode_plus")
+                else self._tokenizer._encode_plus
+            )
+            x = encode_plus(
                 t, return_tensors="pt", add_special_tokens=False, padding=True
             )
             input_ids_lst.append(x["input_ids"].squeeze_(0))
@@ -125,7 +130,7 @@ class Tokenizer:
 
         return new_input_ids, attention_mask, text_mask
 
-    @torch.inference_mode
+    @torch.inference_mode()
     def decode(
         self,
         sequences: Union[List[int], List[List[int]]],
